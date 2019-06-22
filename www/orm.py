@@ -42,7 +42,7 @@ def execute(sql, args):
 		try:
 			cur = yield from conn.cursor()
 			yield from cur.execute(sql.replace('?', '%s'), args)
-			affected = cur.rowrount
+			affected = cur.rowcount
 			yield from cur.close()
 		except BaseException as e:
 			raise
@@ -55,7 +55,7 @@ def create_args_string(num):
 	return ','.join(L)
 
 class Field(object):
-	def __init__(self, name, column_type, primary_key. default):
+	def __init__(self, name, column_type, primary_key, default):
 		self.name = name
 		self.column_type = column_type
 		self.primary_key = primary_key
@@ -68,7 +68,7 @@ class StringField(Field):
 	def __init__(self, name=None, primary_key=False, default=None, ddl='varchar(100)'):
 		super().__init__(name, ddl, primary_key, default)
 
-class BoolenField(Field):
+class BooleanField(Field):
 	def __init__(self, name=None, default=False):
 		super().__init__(name, 'boolean', False, default)
 
@@ -102,7 +102,7 @@ class ModelMetaclass(type):
 						raise RuntimeError('Duplicate primary key for field: %s' % k)
 					primaryKey = k
 				else:
-					field.append(k)
+					fields.append(k)
 		if not primaryKey:
 			raise RuntimeError('primary key not found.')
 		for k in mappings.keys():
@@ -111,10 +111,10 @@ class ModelMetaclass(type):
 		attrs['__mappings__'] = mappings
 		attrs['__table__'] = tableName
 		attrs['__primary_key__'] = primaryKey
-		attrs['__field__'] = field
+		attrs['__field__'] = fields
 		attrs['__select__'] = 'select `%s`, %s from `%s`' % (primaryKey, ','.join(escaped_fields), tableName)
-		attrs['__insert__'] = 'insert into `%s` (%s, `%s`) valus (%s)' % (tableName, ','.join(escaped_fields), primaryKey, create_args_string(len(escaped_fields) + 1))
-		attrs['__update__'] = 'update `%s` set `%s` where `%s`=?' % (tableName, ','.join(map(lambda f: '`%s`=?' % (mappings.get(f).name or f), field)), primaryKey)
+		attrs['__insert__'] = 'insert into `%s` (%s, `%s`) values (%s)' % (tableName, ', '.join(escaped_fields), primaryKey, create_args_string(len(escaped_fields) + 1))
+		attrs['__update__'] = 'update `%s` set `%s` where `%s`=?' % (tableName, ','.join(map(lambda f: '`%s`=?' % (mappings.get(f).name or f), fields)), primaryKey)
 		attrs['__delete__'] = 'delete from `%s` where `%s`=?' % (tableName, primaryKey)
 		return type.__new__(cls, name, bases, attrs)
 
@@ -132,10 +132,10 @@ class Model(dict, metaclass=ModelMetaclass):
 		self[key] = value
 
 	def getValue(self, key):
-		return getarttr(self, key, None)
+		return getattr(self, key, None)
 
 	def getValueOrDefault(self, key):
-		value = getarttr(self, key, None)
+		value = getattr(self, key, None)
 		if value is None:
 			field = self.__mappings__[key]
 			if field.default is not None:
