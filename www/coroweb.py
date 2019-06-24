@@ -56,22 +56,22 @@ def has_named_kw_args(fn):
 			return True
 
 def has_var_kw_arg(fn):
-    params = inspect.signature(fn).parameters
-    for name, param in params.items():
-        if param.kind == inspect.Parameter.VAR_KEYWORD:
-            return True
+	params = inspect.signature(fn).parameters
+	for name, param in params.items():
+		if param.kind == inspect.Parameter.VAR_KEYWORD:
+			return True
 
 def has_request_arg(fn):
-    sig = inspect.signature(fn)
-    params = sig.parameters
-    found = False
-    for name, param in params.items():
-        if name == 'request':
-            found = True
-            continue
-        if found and (param.kind != inspect.Parameter.VAR_POSITIONAL and param.kind != inspect.Parameter.KEYWORD_ONLY and param.kind != inspect.Parameter.VAR_KEYWORD):
-            raise ValueError('request parameter must be the last named parameter in function: %s%s' % (fn.__name__, str(sig)))
-    return found
+	sig = inspect.signature(fn)
+	params = sig.parameters
+	found = False
+	for name, param in params.items():
+		if name == 'request':
+			found = True
+			continue
+		if found and (param.kind != inspect.Parameter.VAR_POSITIONAL and param.kind != inspect.Parameter.KEYWORD_ONLY and param.kind != inspect.Parameter.VAR_KEYWORD):
+			raise ValueError('request parameter must be the last named parameter in function: %s%s' % (fn.__name__, str(sig)))
+	return found
 
 class RequestHandler(object):
 	def __init__(self, app, fn):
@@ -117,11 +117,11 @@ class RequestHandler(object):
 					if name in kw:
 						copy[name] = kw
 				kw = copy
-			 # check named arg:
-			 for k, v in request.match_info.items():
-			 	if k in kw:
-			 		logging.warning('Duplicate arg name in named arg and kw args: %s' % k)
-			 	kw[k] = v
+			# check named arg:
+			for k, v in request.match_info.items():
+				if k in kw:
+					logging.warning('Duplicate arg name in named arg and kw args: %s' % k)
+				kw[k] = v
 		if self._has_request_arg:
 			kw['request'] = request
 		# check required kw:
