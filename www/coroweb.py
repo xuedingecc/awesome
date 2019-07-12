@@ -114,7 +114,7 @@ class RequestHandler(object):
 				copy = dict()
 				for name in self._named_kw_args:
 					if name in kw:
-						copy[name] = kw
+						copy[name] = kw[name]
 				kw = copy
 			# check named arg:
 			for k, v in request.match_info.items():
@@ -132,7 +132,7 @@ class RequestHandler(object):
 		try:
 			r = yield from self._func(**kw)
 			return r
-		except APIReeor as e:
+		except APIError as e:
 			return dict(error=e.error, data=e.data, message=e.message)
 
 def add_static(app):

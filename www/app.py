@@ -9,6 +9,8 @@ from jinja2 import Environment, FileSystemLoader
 import orm
 from coroweb import add_routes, add_static
 
+from handlers import cookie2user, COOKIE_NAME
+
 def init_jinja2(app, **kw):
 	logging.info('init jinja2...')
 	options = dict(
@@ -40,12 +42,29 @@ def logger_factory(app, handler):
 	return logger
 
 @asyncio.coroutine
+def auto_factory(app, handler):
+	@asyncio.coroutine
+	def auth(request):
+		logging.info('Check user: %s %s' % (request.method, request.path))
+		request.__user__ = None
+		cookie_str = request.cookies.get(COOKIE_NAME)
+		if cookie_str:
+			user = yield from cookie2user(cookie_str)
+			if user:
+				logging.info('set current user %s' % user.email)
+				request.__user__ = user
+		if request.path.startswith('/manage/') and (request.__user__ is None or not request.__user__.admin):
+			return web.HTTPFound('/signin')
+		return (yield from handler(request))
+	return auth
+
+@asyncio.coroutine
 def data_factory(app, handler):
 	@asyncio.coroutine
 	def parse_data(request):
 		if request.method == 'POST':
 			if request.content_type.startswith('application/json'):
-				request__data__ = yield from request.json()
+				request.__data__ = yield from request.json()
 				logging.info('request json: %s' % str(request.__data__))
 			elif request.content_type.startswith('application/x-www-form-urlencoded'):
 				request.__data__ = yield from request.post()
@@ -69,7 +88,7 @@ def response_factory(app, handler):
 			if r.startswith('redirect:'):
 				return web.HTTPFound(r[9:])
 			resp = web.Response(boday=r.encode('utf-8'))
-			resp.content_type = 'text/heml;charest=utf-8'
+			resp.content_type = 'text/html;charest=utf-8'
 			return resp
 		if isinstance(r, dict):
 			template = r.get('__template__')
@@ -118,7 +137,7 @@ def init(loop):
 	# return srv
 	yield from orm.create_pool(loop=loop, host='127.0.0.1', port=3306, user='www-data', password='www-data', db='awesome')
 	app = web.Application(loop=loop, middlewares=[
-		logger_factory, response_factory
+		logger_factory, auto_factory, response_factory
 	])
 	init_jinja2(app, filters=dict(datetime=datetime_filter))
 	add_routes(app, 'handlers')
